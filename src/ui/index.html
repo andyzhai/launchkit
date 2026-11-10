@@ -1,0 +1,98 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="launchkit-session" content="__SESSION__"><title>LaunchKit — Launch your business</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body><header><a href="/" class="brand">↗ LaunchKit</a><span>YOUR BUSINESS. YOUR ACCOUNTS.</span><span id="connection-status">Local operator</span></header>
+<main><section class="intro"><p class="eyebrow">FROM APPLICATION TO OPEN FOR BUSINESS</p><h1>Ready for your<br>first customer.</h1><p>Choose your application and domain. LaunchKit connects the website, email, and essentials, then checks the result.</p></section>
+<div class="columns"><section class="card"><h2>Launch a business</h2><form id="launch-form">
+<label>Application folder<input name="appPath" list="apps" placeholder="Choose or paste a local application folder" required><datalist id="apps"></datalist></label>
+<div class="row"><label>Domain<input name="domain" placeholder="yourbusiness.com" required></label><label>Mode<select name="mode"><option value="live">Live launch</option><option value="mock">Simulation · no cloud changes</option></select></label></div>
+<label>Cloudflare account ID<input name="accountId" list="accounts" placeholder="Connect your account below"><datalist id="accounts"></datalist></label>
+<label>Forward contact@domain to<input name="inbox" type="email" placeholder="Your existing inbox"></label>
+<details><summary>Website and email preferences</summary><label>Business title<input name="title" placeholder="Your business name"></label><label>Description<textarea name="description" placeholder="A factual description of what your application does"></textarea></label>
+<label class="check"><input name="seo" type="checkbox" checked>Publish canonical URL, sitemap, and supplied metadata</label>
+<label class="check"><input name="www" type="checkbox" checked>Redirect www to the main website, after checking conflicts</label>
+<label class="check"><input name="outbound" type="checkbox">Set up outbound email through Resend</label>
+<p class="hint">Free Cloudflare Web Analytics is configured automatically for supported proxied custom domains. Existing site rules are preserved. Browser tracking is verified separately; restrictive CSP and no-transform headers may require changes.</p></details>
+<p class="hint">Launch authorizes free hosting and new configuration. Purchases, paid plans, and replacement of existing services require separate approval. Your application’s local build scripts will run.</p><button class="primary" type="submit">Launch ↗</button></form></section>
+<aside><section class="card"><h2>Connect once</h2><p class="hint">Tokens stay on this computer. Windows protects saved credentials with your OS account.</p><form id="connections-form"><label>Cloudflare API token<input name="cloudflare" type="password" autocomplete="new-password"></label><label>Registrar token <span class="hint">only for purchases</span><input name="registrar" type="password" autocomplete="new-password"></label><label>Resend API key <span class="hint">optional</span><input name="resend" type="password" autocomplete="new-password"></label><button type="submit">Save connections</button></form><p><a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noreferrer">Create a scoped Cloudflare token ↗</a></p><p class="hint">Workers Scripts Edit, Account Settings Read; Zone Read, DNS Edit, Workers Routes Read; Email Routing Rules/Edit and Addresses/Edit plus Zone Settings Write. Automatic Web Analytics requires Account Settings Read and Write for the selected account. Registrar uses a separate user token where required.</p></section><section class="card"><h2>Saved businesses</h2><div id="history"></div></section></aside></div>
+<p id="notice" role="status"></p>
+<p id="saved-connections" class="hint" role="status"></p>
+<section class="card" id="grow" hidden aria-labelledby="grow-title">
+<div class="row"><h2 id="grow-title">Growth · Google Search Console</h2><button id="refresh-growth">Refresh Google properties and evidence</button><button id="download-growth">Download Growth report</button></div>
+<p id="growth-status" role="status"></p>
+<p id="growth-disabled" class="hint" role="status"></p>
+<details><summary>Connect Google Search Console</summary>
+<p>Use a Desktop OAuth client from your own Google Cloud project with Search Console API enabled. Google handles sign-in and consent in your browser.</p>
+<p><a href="https://console.cloud.google.com/apis/library/searchconsole.googleapis.com" target="_blank" rel="noreferrer">Enable Search Console API</a> · <a href="https://console.cloud.google.com/auth/clients" target="_blank" rel="noreferrer">Create a Desktop OAuth client</a></p>
+<form id="google-form"><label>Desktop OAuth client ID<input name="googleClientId" autocomplete="off" placeholder="Use saved client, or enter your client ID"></label><label>Desktop OAuth client secret<input name="googleClientSecret" type="password" autocomplete="new-password" placeholder="Use saved client secret"></label>
+<label class="check"><input name="googleManage" type="checkbox">Authorize sitemap management as well as reads. Each submission still requires exact approval.</label>
+<button id="connect-google" type="submit">Prepare Google sign-in</button></form>
+<p><a id="google-signin" hidden target="_blank" rel="noreferrer">Continue to Google sign-in in your browser</a></p><p id="google-storage" class="hint"></p>
+</details>
+<form id="growth-property-form"><label>Existing verified property<select id="growth-property"><option value="">Refresh properties first</option></select></label><button id="select-growth-property" type="submit">Use selected property</button></form>
+<p><a id="search-console" href="https://search.google.com/search-console" target="_blank" rel="noreferrer">Open Google Search Console for ownership verification or details</a></p>
+<p id="growth-window" class="hint"></p><p id="growth-metrics"></p><p id="growth-measurement" class="hint"></p>
+<h3>Sitemaps</h3><ul id="growth-sitemaps"></ul><p id="growth-indexing" class="hint"></p>
+<button id="prepare-sitemap">Prepare sitemap submission for approval</button><div id="growth-approvals"></div>
+<h3>Next actions</h3><ul id="growth-actions"></ul>
+<details><summary>Submission history and provider evidence</summary><pre id="growth-evidence"></pre></details>
+</section>
+<section class="card" id="bing-grow" hidden aria-labelledby="bing-title">
+<div class="row"><h2 id="bing-title">Growth · Bing Webmaster Tools</h2><button id="refresh-bing">Refresh Bing properties and evidence</button><button id="download-bing">Download Bing report</button></div>
+<p id="bing-status" role="status"></p><p id="bing-disabled" class="hint"></p>
+<details><summary>Connect Bing Webmaster Tools</summary><p>In Bing Webmaster Tools, verify your site, then open Settings → API Access → API Key. This key grants account-wide access to verified sites. Each sitemap submission still requires exact approval.</p>
+<form id="bing-form"><label>Bing Webmaster API key<input name="bingApiKey" type="password" autocomplete="new-password" placeholder="Enter key, or leave blank to keep saved connection"></label><button id="connect-bing" type="submit">Save Bing connection</button></form><p id="bing-storage" class="hint"></p></details>
+<form id="bing-property-form"><label>Existing verified HTTPS site<select id="bing-property"><option value="">Refresh Bing properties first</option></select></label><button id="select-bing" type="submit">Use selected Bing site</button></form>
+<p><a href="https://www.bing.com/webmasters/" target="_blank" rel="noreferrer">Open Bing Webmaster Tools to add, import or verify your site</a></p>
+<p id="bing-measurement" class="hint"></p><p id="bing-metrics-status"></p><ul id="bing-metrics"></ul><h3>Bing sitemaps</h3><ul id="bing-sitemaps"></ul><p id="bing-indexing" class="hint"></p>
+<button id="prepare-bing">Prepare Bing sitemap submission</button><div id="bing-approvals"></div><h3>Next actions</h3><ul id="bing-actions"></ul><details><summary>Bing submission history and evidence</summary><pre id="bing-evidence"></pre></details>
+</section>
+<section class="card" id="social-grow" hidden aria-labelledby="social-title">
+<div class="row"><h2 id="social-title">Growth · Social publishing</h2><button id="refresh-social">Verify publishing account</button><button id="download-social">Download publication history</button></div>
+<p id="social-status" role="status"></p><p id="social-limits" class="hint"></p>
+<details><summary>Connect mastodon.social</summary><p>Create an application in <a href="https://mastodon.social/settings/applications" target="_blank" rel="noreferrer">Mastodon Development settings</a> with only read:accounts, read:statuses and write:statuses. Copy its user access token here. This publishes to that account, with separate approval for each exact post.</p>
+<form id="social-connect-form"><label>User access token<input name="mastodonToken" type="password" autocomplete="new-password" placeholder="Leave blank to keep saved connection"></label><button id="connect-social" type="submit">Save Mastodon connection</button></form><p id="social-storage" class="hint"></p></details>
+<p>Review factual claims and <a href="https://help.joinmastodon.org/article/12-community-standards" target="_blank" rel="noreferrer">server rules</a> before publishing. No bulk posting or unsolicited commercial spam.</p>
+<form id="social-draft-form"><h3 id="social-editor-title">New draft</h3><label>Post text<textarea id="social-text" rows="5" maxlength="4000" required></textarea></label><label>Visibility<select id="social-visibility"><option value="unlisted">Unlisted — public link, outside public timelines</option><option value="public">Public — eligible for public timelines</option></select></label>
+<p class="hint">Saving edits invalidates any pending approval. Preparing an approval uses the saved text; review the exact preview below before publishing.</p><button id="save-social" type="submit">Save draft</button><button id="new-social" type="button">Clear editor for new draft</button><button id="template-social" type="button">Create website announcement draft</button></form>
+<h3>Drafts and publication history</h3><div id="social-drafts"></div>
+</section>
+<section class="card" id="discoverability" hidden aria-labelledby="audit-title">
+<div class="row"><h2 id="audit-title">Public discoverability review</h2><button id="refresh-audit">Check public content and crawl signals</button><button id="download-audit">Download discoverability report</button></div>
+<p id="audit-status" role="status"></p><p id="audit-limits" class="hint"></p>
+<p class="hint">Initial HTML and JavaScript-rendered observations are labeled separately. Product-content recommendations are heuristic REVIEW assessments, not verified facts. P1: review access or unavailable evidence first. P2: review content and metadata. P3: supporting observations. ALLOWED/BLOCKED describe homepage robots policy only; INDETERMINATE needs manual interpretation; UNAVAILABLE means it could not be measured. Training controls are separate from search access.</p>
+<h3>Prioritized human review</h3><ul id="audit-findings"></ul>
+<details id="audit-details"><summary>Observed evidence by source and crawler purpose</summary><div id="audit-observations"></div></details>
+<h3>One approved title improvement</h3>
+<p id="improvement-limits" class="hint"></p>
+<p>Review the observed page title and visible product name above. If the difference is unintended, propose a factual title. Consistent naming may make the page easier to identify; the audit does not prove a search defect.</p>
+<form id="improvement-form"><label>Proposed homepage title<input id="improvement-title" maxlength="120" required></label><button id="prepare-improvement" type="submit">Preview title change</button></form>
+<p class="hint">Previewing is local. Preparing another title replaces pending approval. Approval below publishes the exact saved preview to the existing production Worker.</p>
+<div id="improvement-history"></div>
+<button id="download-improvements">Download improvement report</button>
+</section>
+<section class="card" id="cloud-operate" hidden aria-labelledby="cloud-title">
+<div class="row"><h2 id="cloud-title">Cloud monitoring</h2><button id="refresh-cloud">Refresh cloud status</button></div>
+<p id="cloud-status" role="status">Not loaded</p><p id="cloud-target"></p>
+<p class="hint">Runs in your Cloudflare account while this computer is off. A separate Worker and SQLite Durable Object check only the saved production hostname. The monitor has no deployment or DNS credentials. Email goes only to the saved, verified owner inbox.</p>
+<form id="cloud-form"><label class="check"><input name="cloudEnabled" type="checkbox">Enable cloud health checks</label>
+<label>Cloud check interval<select name="cloudInterval"><option value="5">Every 5 minutes</option><option value="15">Every 15 minutes</option><option value="30">Every 30 minutes</option><option value="60">Every hour</option></select></label>
+<label class="check"><input name="cloudNotifications" type="checkbox">Send incident and recovery emails to the verified owner inbox</label>
+<label class="check"><input name="cloudAuthorized" type="checkbox">I authorize monitoring this production hostname and the selected emails using free-tier services.</label>
+<p class="hint">No paid upgrades are made. Paid or unknown Workers billing blocks deployment for review. Existing account limits are shared; limit failures are reported as missing coverage. The monitor never repairs production.</p>
+<button id="deploy-cloud" type="submit">Deploy / update cloud monitor</button><button id="save-cloud" type="button">Save cloud settings</button><button id="disable-cloud" type="button">Disable cloud monitoring</button></form>
+<p id="cloud-verification" class="hint"></p><p id="cloud-release" class="hint"></p><button id="sync-cloud-release" hidden>Retry release sync</button><button id="verify-cloud">Verify notifications on next schedules (2 emails)</button>
+<p class="hint">The drill labels simulated incident and recovery emails clearly. Confirm receipt using each email's link. API acceptance alone does not verify delivery. HTTPS validity is checked in cloud; certificate expiry warnings remain local.</p>
+<div id="cloud-incidents"></div><details><summary>Cloud observations, schedule and email evidence</summary><pre id="cloud-evidence"></pre></details>
+</section>
+<section class="card" id="operate" hidden aria-labelledby="operate-title">
+<div class="row"><h2 id="operate-title">Operate your business</h2><button id="check-health">Check health now</button><button id="download-operations">Download operations report</button></div>
+<p id="health-status" role="status"></p><p id="health-timing" class="hint"></p>
+<p class="hint">Monitoring runs while LaunchKit is open on this computer. Alerts appear here; no email or external notifications are sent. Closing LaunchKit leaves an unmonitored gap.</p>
+<form id="operate-form"><div class="row"><label class="check"><input name="monitoring" type="checkbox">Enable periodic health checks</label><label>Check every (minutes)<input name="intervalMinutes" type="number" min="1" max="1440" step="1" value="5" required></label></div>
+<label class="check"><input name="usageEnabled" type="checkbox">Read aggregate Worker usage hourly (Account Analytics Read)</label><button id="save-operations" type="submit">Save monitoring settings</button></form>
+<ul id="health-checks" class="health-checks"></ul>
+<h3>Alerts and issue triage</h3><div id="incidents" aria-live="polite"></div>
+<details><summary>Recovery options</summary><p>Recheck health to confirm transient recovery without changes. If a problem persists, inspect and repair the launch using the saved application's build and provider workflow. Purchases, replacements, and deployment updates retain their approval gates. Unknown deployment outcomes stop for reconciliation; there is no automatic rollback or forced redeploy. Check health again afterwards to confirm recovery.</p><button id="recover">Inspect and repair launch</button></details>
+<div class="columns"><section><h3>Usage · last 24 hours</h3><p id="usage-summary"></p><p id="usage-timing" class="hint"></p></section><section><h3>Recorded costs</h3><p id="cost-summary" class="hint"></p><ul id="recorded-costs"></ul></section></div>
+<details><summary>Recent checks and operations history</summary><ol id="health-history"></ol><ol id="operation-events"></ol></details>
+</section>
+<section class="card" id="progress" hidden><div class="row"><h2 id="run-title">Launch progress</h2><button id="configure-analytics" type="button">Configure / recheck Web Analytics</button><button id="resume">Resume / recheck</button><button id="download">Download report</button></div><p id="run-status"></p><a id="website" target="_blank" rel="noreferrer"></a><div id="approvals"></div><ol id="steps"></ol><p class="hint">Launch verification records a point-in-time result. Operate shows subsequent health checks separately.</p></section></main><footer>Local by design. No required LaunchKit cloud account.</footer></body></html>

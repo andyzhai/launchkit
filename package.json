@@ -1,0 +1,30 @@
+{
+  "name": "launchkit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A local, customer-owned small-business launch operator",
+  "type": "module",
+  "engines": { "node": ">=24.0.0" },
+  "scripts": {
+    "start": "node src/main.ts",
+    "dev": "node --watch src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.ts",
+    "test:browser": "node --test tests/browser/*.test.ts",
+    "check": "npm run typecheck && npm test",
+    "test:live": "node scripts/live-check.ts",
+    "test:grow:live": "node scripts/grow-live-check.ts",
+    "test:bing:live": "node scripts/bing-live-check.ts",
+    "test:social:live": "node scripts/social-live-check.ts",
+    "test:reference": "node scripts/verify-reference.ts",
+    "check:public": "node scripts/check-public.ts"
+  },
+  "dependencies": {
+    "playwright": "^1.63.0",
+    "wrangler": "4.154.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "7.0.2"
+  }
+}

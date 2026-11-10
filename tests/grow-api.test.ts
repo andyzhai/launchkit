@@ -1,0 +1,51 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { request } from 'node:http';
+import { Journal } from '../src/workflow/journal.ts';
+import { Vault } from '../src/security/tokens.ts';
+import { MockProvider } from '../src/adapters/mock.ts';
+import { startServer } from '../src/ui/server.ts';
+import { GoogleSearch, READ_SCOPE } from '../src/grow/google.ts';
+import { MockSearch } from '../src/grow/controller.ts';
+
+test('Growth API preserves authentication, callback state, exact approvals, and shared mutation exclusion', async () => {
+  const journal = new Journal(await mkdtemp(join(tmpdir(), 'launchkit-grow-api-'))); const vault = new Vault(journal.dir);
+  vault.connect = async input => { vault.values = { ...vault.values, ...input }; };
+  const run = await journal.create({ appPath: journal.dir, domain: 'example.test', accountId: 'mock', inbox: '', mode: 'mock', outbound: false, www: false, seo: { approved: true, title: '', description: '' }, analytics: { approved: false, publicPaths: ['/'] } });
+  run.resources.url = 'https://example.test'; run.steps.seo.status = 'VERIFIED'; run.status = 'LIVE_VERIFIED'; await journal.save(run);
+  let exchanges = 0;
+  const google = new GoogleSearch(vault, async () => { exchanges++; return new Response(JSON.stringify({ access_token: 'api-access-value', refresh_token: 'api-refresh-value', token_type: 'Bearer', expires_in: 3600, scope: READ_SCOPE })); });
+  const provider = new MockSearch(run.config.domain);
+  const { server, origin, tick } = await startServer({ journal, vault, google, provider: () => new MockProvider(journal.dir), growthProvider: () => provider });
+  let release = () => {};
+  try {
+    const page = await fetch(origin); const html = await page.text(); const headers = { Cookie: page.headers.get('set-cookie')!.split(';')[0], 'X-LaunchKit-Token': html.match(/name="launchkit-session" content="([^"]+)"/)![1], 'Content-Type': 'application/json', Origin: origin };
+    const post = (path: string, body: unknown = {}) => fetch(`${origin}/api${path}`, { method: 'POST', headers, body: JSON.stringify(body) });
+    const path = `/runs/${run.id}/grow`;
+    assert.equal((await fetch(`${origin}/api${path}`)).status, 403);
+    assert.equal((await fetch(`${origin}/api${path}/refresh`, { method: 'POST', headers: { ...headers, Origin: 'https://evil.test' }, body: '{}' })).status, 403);
+    assert.equal((await fetch(`${origin}/api${path}/refresh`, { headers })).status, 404);
+    assert.equal((await fetch(`${origin}/oauth/google/callback?state=forged&code=forged`, { headers: { 'Sec-Fetch-Site': 'cross-site' } })).status, 400); assert.equal(exchanges, 0);
+    const begin = await post('/grow/google/connect', { clientId: 'api-test.apps.googleusercontent.com', clientSecret: 'api-client-value' }); assert.equal(begin.status, 200);
+    const auth = new URL((await begin.json()).url); const cb = `${origin}/oauth/google/callback?state=${auth.searchParams.get('state')}&code=api-code-value`;
+    const foreign = await new Promise(resolve => { const req = request(cb, { headers: { Host: 'evil.test' } }, res => { res.resume(); resolve(res.statusCode); }); req.end(); }); assert.equal(foreign, 403);
+    assert.equal((await fetch(cb, { headers: { 'Sec-Fetch-Site': 'cross-site' } })).status, 200); assert.equal(exchanges, 1);
+    assert.equal((await fetch(cb)).status, 400); assert.equal(exchanges, 1);
+    assert.equal((await fetch(`${origin}/api/grow/google`, { headers: { ...headers, 'Sec-Fetch-Site': 'cross-site' } })).status, 403);
+    await post('/connections', { googleRefreshToken: 'injected-token' }); assert.equal(vault.values.googleRefreshToken, 'api-refresh-value');
+    assert.equal((await post(`${path}/refresh`)).status, 200);
+    assert.equal((await post(`${path}/select`, { property: 'https://example.test/' })).status, 200);
+    const prepared = await (await post(`${path}/prepare`)).json(); const approvalId = prepared.submissions[0].id;
+    assert.equal(provider.maps.length, 0); assert.equal((await post(`${path}/approval`, { approvalId, decision: 'approved' })).status, 200); assert.equal(provider.maps.length, 1);
+    assert.doesNotMatch(JSON.stringify(await (await fetch(`${origin}/api${path}`, { headers })).json()), /api-refresh-value|api-access-value|api-client-value/);
+    let entered!: () => void; const arrived = new Promise<void>(resolve => { entered = resolve; }); const wait = new Promise<void>(resolve => { release = resolve; });
+    provider.sites = async () => { entered(); await wait; return []; };
+    const refreshing = post(`${path}/refresh`); await arrived;
+    assert.equal((await post(`/runs/${run.id}/resume`)).status, 400);
+    assert.equal((await post('/grow/google/connect', { clientId: 'api-test.apps.googleusercontent.com' })).status, 400);
+    await tick(); release(); assert.equal((await refreshing).status, 200);
+  } finally { release(); server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); }
+});

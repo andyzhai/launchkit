@@ -1,0 +1,50 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, mkdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { chromium } from 'playwright';
+import { Journal } from '../../src/workflow/journal.ts';
+import { Runner } from '../../src/workflow/runner.ts';
+import { Vault } from '../../src/security/tokens.ts';
+import { MockProvider } from '../../src/adapters/mock.ts';
+import { MockOperatorProvider } from '../../src/operate/provider.ts';
+import { Operator } from '../../src/operate/operator.ts';
+import { startServer } from '../../src/ui/server.ts';
+
+test('M2 dashboard enables monitoring, triages incidents, recovers, downloads and restores settings', async () => {
+  const journal = new Journal(await mkdtemp(join(tmpdir(), 'launchkit-operate-browser-')));
+  const draft = await journal.create({ appPath: journal.dir, domain: 'example.test', accountId: 'mock', inbox: '', mode: 'mock', outbound: false, www: false, seo: { approved: false, title: '', description: '' }, analytics: { approved: false, publicPaths: ['/'] } });
+  const provider = new MockProvider(journal.dir); const run = await new Runner(journal, provider).execute(draft.id);
+  const monitor = new MockOperatorProvider(); const healthy = await monitor.health(); let failing = true;
+  monitor.health = async () => healthy.map(c => c.name === 'http' && failing ? { ...c, status: 'FAIL', message: 'Simulated HTTP 503.' } : c);
+  const operator = new Operator(journal, () => monitor);
+  const { server, origin } = await startServer({ journal, vault: new Vault(journal.dir), provider: () => provider, operatorProvider: () => monitor });
+  const browser = await chromium.launch({ channel: 'chrome', headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1400, height: 1100 } }); const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+    await page.goto(origin); await page.locator('#operate').waitFor({ state: 'visible' });
+    assert.match(await page.locator('#health-status').innerText(), /NOT CHECKED/);
+    await page.locator('[name=monitoring]').check(); await page.locator('[name=usageEnabled]').check(); await page.locator('[name=intervalMinutes]').fill('15');
+    await page.getByRole('button', { name: 'Save monitoring settings' }).click();
+    await page.waitForFunction(() => document.querySelector('#notice')?.textContent?.includes('Monitoring settings saved'));
+    await page.getByRole('button', { name: 'Check health now' }).click();
+    await page.waitForFunction(() => document.querySelector('#health-status')?.textContent?.includes('DOWN') && !document.querySelector('#health-status')?.textContent?.includes('busy'));
+    assert.match(await page.locator('#usage-summary').innerText(), /1,200 requests/);
+    await page.getByRole('button', { name: 'Acknowledge alert' }).click();
+    await page.waitForFunction(() => document.querySelector('#incidents')?.textContent?.includes('acknowledged'));
+    assert.match(await page.locator('#incidents').innerText(), /FAIL/);
+    await page.reload(); await page.locator('#operate').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('[name=monitoring]').isChecked(), true); assert.equal(await page.locator('[name=intervalMinutes]').inputValue(), '15');
+    failing = false; await page.getByRole('button', { name: 'Check health now' }).click();
+    await page.waitForFunction(() => document.querySelector('#health-status')?.textContent?.includes('HEALTHY') && !document.querySelector('#health-status')?.textContent?.includes('busy'));
+    assert.match(await page.locator('#incidents').innerText(), /RESOLVED/);
+    const download = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download operations report' }).click(); assert.equal((await download).suggestedFilename(), 'launchkit-operations.json');
+    await page.locator('[name=monitoring]').uncheck(); await page.getByRole('button', { name: 'Save monitoring settings' }).click();
+    await page.waitForFunction(() => document.querySelector('#health-status')?.textContent?.includes('monitoring paused'));
+    assert.equal((await operator.load(run.id)).settings.enabled, false);
+    await mkdir('test-results', { recursive: true }); await page.screenshot({ path: 'test-results/launchkit-operate.png', fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 }); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); }
+});
